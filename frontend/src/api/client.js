@@ -35,13 +35,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Signing in is allowed to fail with a 401 and mean it. Refreshing after one
+// would be answering "your session expired" to somebody who never had a
+// session, and it is their credentials that were wrong.
+const CREDENTIAL_ROUTES = ['/auth/login', '/auth/register', '/auth/accept-invitation'];
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const request = error.config;
     const isAuthFailure = error.response?.status === 401;
+    const isCredentialCheck = CREDENTIAL_ROUTES.some((route) => request?.url?.startsWith(route));
 
-    if (!isAuthFailure || request?.retried) {
+    if (!isAuthFailure || isCredentialCheck || request?.retried) {
       return Promise.reject(error);
     }
 
@@ -51,9 +57,12 @@ api.interceptors.response.use(
       const accessToken = await refreshSession();
       request.headers.Authorization = `Bearer ${accessToken}`;
       return await api(request);
-    } catch (refreshError) {
+    } catch {
+      // Rejected with the original failure, not the refresh one. What the
+      // caller wants to show is why their request failed, not the mechanics of
+      // the recovery attempt that also failed.
       useAuthStore.getState().clear();
-      return Promise.reject(refreshError);
+      return Promise.reject(error);
     }
   },
 );
