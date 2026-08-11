@@ -47,10 +47,22 @@ const envSchema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
+    // A number of proxy hops, not a boolean. `true` tells Express to believe the
+    // leftmost X-Forwarded-For entry, and a client can put anything it likes
+    // there — which would let someone bypass the per-IP login limit by rotating
+    // a forged header. A hop count is counted from the right, so only addresses
+    // added by infrastructure we actually sit behind are trusted.
+    //   0  local, no proxy
+    //   1  behind Render or Fly alone
+    //   2  behind Vercel rewriting to Render
     TRUST_PROXY: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((value) => value === 'true'),
+      .string()
+      .default('0')
+      .refine(
+        (value) => value === 'false' || /^\d+$/.test(value),
+        'TRUST_PROXY must be a number of proxy hops, for example 0, 1 or 2',
+      )
+      .transform((value) => (value === 'false' ? 0 : Number(value))),
 
     // The unsafe demo endpoint writes negative stock deliberately, so it is
     // opt-in rather than opt-out.

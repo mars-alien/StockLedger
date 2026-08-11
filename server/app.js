@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
@@ -102,9 +103,13 @@ app.use('/api/demo', demoRoutes);
 // API. That is what keeps the refresh cookie at SameSite=Strict, which a
 // separate frontend host would break. In development Vite serves the app and
 // proxies /api here, so this never runs.
-if (env.NODE_ENV === 'production') {
-  const clientDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../frontend/dist');
+// Only when the bundle is actually there. Deployed as one origin it is, and
+// Express serves the app. Deployed with the frontend on a CDN that rewrites
+// /api here, it is not, and this must stay out of the way rather than answer
+// every unmatched GET with a missing file.
+const clientDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../frontend/dist');
 
+if (env.NODE_ENV === 'production' && existsSync(path.join(clientDir, 'index.html'))) {
   // index:false so the fallback below decides when to hand out the shell, and a
   // long max-age because Vite fingerprints every asset filename.
   app.use(express.static(clientDir, { index: false, maxAge: '1y' }));
