@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum StockMovementReason {
+  RECEIPT
+  SALE
+  ADJUSTMENT
+  CANCELLATION
+}
+
+// Fulfilment only. Whether money arrived is paymentStatus and nothing else, so
+// there is never a second field that can also claim an order is paid.
+enum OrderStatus {
+  PLACED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+}
+
+// Every timestamp is timestamptz, so Postgres holds the instant rather than a
+// naive local reading. Analytics buckets by REPORTING_TIME_ZONE with a single
+// AT TIME ZONE, instead of converting out of UTC first and getting it wrong.
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  memberships     Membership[]
+  invitations     Invitation[]
+  auditLogs       AuditLog[]
+  categories      Category[]
+  products        Product[]
+  variants        ProductVariant[]
+  stockMovements  StockMovement[]
+  orders          Order[]
+  orderLines      OrderLine[]
+  idempotencyKeys IdempotencyKey[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  memberships    Membership[]
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+  stockMovements StockMovement[]
+  orders         Order[]
+
+  @@map("users")
+}
+
+model Membership {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  organizationId String   @db.Uuid
+  role           Role
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model Invitation {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  email          String
+  role           Role
+  tokenHash      String    @unique
+  expiresAt      DateTime  @db.Timestamptz(3)
+  acceptedAt     DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitations")
+}
+
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  tokenHash    String    @unique
+  familyId     String    @db.Uuid
+  expiresAt    DateTime  @db.Timestamptz(3)
+  revokedAt    DateTime? @db.Timestamptz(3)
+  replacedById String?   @unique @db.Uuid
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy RefreshToken? @relation("TokenRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces   RefreshToken? @relation("TokenRotation")
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refreshTokens")
+}
+
+model Category {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  slug           String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products     Product[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("categories")
+}
+
+model Product {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  sku            String
+  name           String
+  description    String?
+  categoryId     String?  @db.Uuid
+  imageUrl       String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  variants     ProductVariant[]
+
+  @@unique([organizationId, sku])
+  @@index([organizationId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductVariant {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  productId      String   @db.Uuid
+  sku            String
+  name           String
+  attributes     Json?
+  priceCents     Int
+  costCents      Int
+  quantityOnHand Int      @default(0)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+  orderLines     OrderLine[]
+
+  @@unique([organizationId, sku])
+  @@index([organizationId])
+  @@index([productId])
+  @@map("productVariants")
+}
+
+// Append-only. Rows are inserted, never updated or deleted, so the ledger stays
+// a truthful history and balanceAfter can be trusted.
+model StockMovement {
+  id              String              @id @default(uuid()) @db.Uuid
+  organizationId  String              @db.Uuid
+  variantId       String              @db.Uuid
+  delta           Int
+  reason          StockMovementReason
+  note            String?
+  balanceAfter    Int
+  orderId         String?             @db.Uuid
+  createdByUserId String              @db.Uuid
+  createdAt       DateTime            @default(now()) @db.Timestamptz(3)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  variant       ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  order         Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdByUser User           @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([variantId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([createdByUserId])
+  @@index([orderId])
+  @@map("stockMovements")
+}
+
+model Order {
+  id                String        @id @default(uuid()) @db.Uuid
+  organizationId    String        @db.Uuid
+  orderNumber       String
+  customerName      String
+  customerPhone     String?
+  status            OrderStatus   @default(PLACED)
+  paymentStatus     PaymentStatus @default(UNPAID)
+  subtotalCents     Int
+  taxCents          Int
+  totalCents        Int
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  placedByUserId    String        @db.Uuid
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  placedByUser   User            @relation(fields: [placedByUserId], references: [id], onDelete: Cascade)
+  lines          OrderLine[]
+  stockMovements StockMovement[]
+
+  @@unique([organizationId, orderNumber])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@index([placedByUserId])
+  @@map("orders")
+}
+
+model OrderLine {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  orderId        String @db.Uuid
+  variantId      String @db.Uuid
+  quantity       Int
+  unitPriceCents Int
+  lineTotalCents Int
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant      ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([orderId])
+  @@index([variantId])
+  @@map("orderLines")
+}
+
+// The unique constraint on (organizationId, key) is the whole concurrency
+// control for repeat submissions: a second insert with the same key fails
+// immediately, which is how a retry is recognised without any lock.
+model IdempotencyKey {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  key            String
+  requestHash    String
+  responseStatus Int?
+  responseBody   Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("idempotencyKeys")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  actorUserId    String   @db.Uuid
+  action         String
+  entityType     String
+  entityId       String
+  before         Json?
+  after          Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUser    User         @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId])
+  @@map("auditLogs")
+}

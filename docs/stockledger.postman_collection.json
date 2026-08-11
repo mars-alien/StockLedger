@@ -1,0 +1,392 @@
+{
+  "info": {
+    "name": "StockLedger",
+    "description": "Multi-tenant inventory and order management. Run Auth > Login first: it stores the access token into a collection variable that every other request uses.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "organizationId", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "variantId", "value": "" },
+    { "key": "orderId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Asha Rao\",\n  \"email\": \"asha@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "if (body.organization) {",
+                  "  pm.collectionVariables.set('organizationId', body.organization.id);",
+                  "}",
+                  "pm.test('signed in', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"asha@stockledger.test\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Me",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" }
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"organizationId\": \"{{organizationId}}\"\n}" },
+            "url": "{{baseUrl}}/auth/refresh"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        {
+          "name": "Create organization",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"North Street Traders\"\n}" },
+            "url": "{{baseUrl}}/organizations"
+          }
+        },
+        {
+          "name": "My organizations",
+          "request": { "method": "GET", "url": "{{baseUrl}}/organizations" }
+        },
+        {
+          "name": "Current organization",
+          "request": { "method": "GET", "url": "{{baseUrl}}/organizations/current" }
+        },
+        {
+          "name": "Switch organization",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/organizations/{{organizationId}}/switch"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Members (owner only)",
+      "item": [
+        {
+          "name": "List members",
+          "request": { "method": "GET", "url": "{{baseUrl}}/members?page=1&limit=20" }
+        },
+        {
+          "name": "Pending invitations",
+          "request": { "method": "GET", "url": "{{baseUrl}}/members/invitations" }
+        },
+        {
+          "name": "Invite a member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new@example.com\",\n  \"role\": \"STAFF\"\n}"
+            },
+            "url": "{{baseUrl}}/members/invitations"
+          },
+          "description": "inviteUrl is returned once and never again."
+        }
+      ]
+    },
+    {
+      "name": "Catalogue",
+      "item": [
+        {
+          "name": "List categories",
+          "request": { "method": "GET", "url": "{{baseUrl}}/categories" }
+        },
+        {
+          "name": "Create category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Footwear\"\n}" },
+            "url": "{{baseUrl}}/categories"
+          }
+        },
+        {
+          "name": "List products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data.length) pm.collectionVariables.set('productId', body.data[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/products?page=1&limit=20&search=" }
+        },
+        {
+          "name": "Get product",
+          "request": { "method": "GET", "url": "{{baseUrl}}/products/{{productId}}" }
+        },
+        {
+          "name": "Create product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"RUN-001\",\n  \"name\": \"Runner\",\n  \"description\": \"A shoe\"\n}"
+            },
+            "url": "{{baseUrl}}/products"
+          }
+        },
+        {
+          "name": "Add variant",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"RUN-001-1\",\n  \"name\": \"Large / Blue\",\n  \"priceCents\": 49900,\n  \"costCents\": 30000\n}"
+            },
+            "url": "{{baseUrl}}/products/{{productId}}/variants"
+          }
+        },
+        {
+          "name": "Upload product image",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "image", "type": "file", "src": [] }]
+            },
+            "url": "{{baseUrl}}/products/{{productId}}/image"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "Search variants",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data.length) pm.collectionVariables.set('variantId', body.data[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/inventory/variants?limit=20" }
+        },
+        {
+          "name": "Stock ledger",
+          "request": { "method": "GET", "url": "{{baseUrl}}/inventory/movements?page=1&limit=20" }
+        },
+        {
+          "name": "Receive stock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 25,\n  \"note\": \"Delivery\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/receive"
+          }
+        },
+        {
+          "name": "Adjust stock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"delta\": -2,\n  \"note\": \"Damaged in transit\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/adjust"
+          },
+          "description": "A reason is mandatory on an adjustment."
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "List orders",
+          "request": { "method": "GET", "url": "{{baseUrl}}/orders?page=1&limit=20" }
+        },
+        {
+          "name": "Place order",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A fresh key per send. Reuse it deliberately to see the replay.",
+                  "pm.collectionVariables.set('idempotencyKey', require('uuid').v4());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "}",
+                  "pm.test('replay header present', () => pm.response.to.have.header('Idempotency-Replayed'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Ananya Krishnan\",\n  \"customerPhone\": \"9876543210\",\n  \"lines\": [\n    { \"variantId\": \"{{variantId}}\", \"quantity\": 2 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/orders"
+          }
+        },
+        {
+          "name": "Get order",
+          "request": { "method": "GET", "url": "{{baseUrl}}/orders/{{orderId}}" }
+        },
+        {
+          "name": "Download invoice",
+          "request": { "method": "GET", "url": "{{baseUrl}}/orders/{{orderId}}/invoice" }
+        },
+        {
+          "name": "Cancel order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"Customer changed their mind\"\n}" },
+            "url": "{{baseUrl}}/orders/{{orderId}}/cancel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Create payment intent",
+          "request": { "method": "POST", "url": "{{baseUrl}}/payments/orders/{{orderId}}/intent" },
+          "description": "Reuses the Razorpay order if one already exists for this order."
+        },
+        {
+          "name": "Verify checkout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpayOrderId\": \"order_xxx\",\n  \"razorpayPaymentId\": \"pay_xxx\",\n  \"signature\": \"...\"\n}"
+            },
+            "url": "{{baseUrl}}/payments/verify"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": { "method": "GET", "url": "{{baseUrl}}/analytics/dashboard?days=180" }
+        }
+      ]
+    },
+    {
+      "name": "Concurrency demo",
+      "item": [
+        { "name": "State", "request": { "method": "GET", "url": "{{baseUrl}}/demo/state" } },
+        {
+          "name": "Reset to one unit",
+          "request": { "method": "POST", "url": "{{baseUrl}}/demo/reset" }
+        },
+        {
+          "name": "Unsafe order",
+          "request": { "method": "POST", "url": "{{baseUrl}}/demo/orders-unsafe" },
+          "description": "No row lock, on purpose. Fire it in parallel and stock goes negative."
+        }
+      ]
+    }
+  ]
+}
