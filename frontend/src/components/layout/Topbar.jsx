@@ -13,8 +13,21 @@ export function Topbar() {
 
   return (
     <header className="flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4">
-      <Button variant="ghost" size="sm" className="lg:hidden" onClick={toggleSidebar}>
-        Menu
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-1 px-2 lg:hidden"
+        aria-label="Open navigation"
+        onClick={toggleSidebar}
+      >
+        <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden="true">
+          <path
+            d="M3 5.5h14M3 10h14M3 14.5h14"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
       </Button>
 
       <OrganizationSwitcher />
