@@ -10,13 +10,13 @@ built so that overselling is impossible.**
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
 [![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://prisma.io)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![Tests](https://img.shields.io/badge/tests-124%20passing-3C873A?style=flat-square)](#testing)
+
 
 [Live demo](https://stock-edger.vercel.app) &nbsp;·&nbsp;
 [Architecture](docs/architecture.md) &nbsp;·&nbsp;
 [API](docs/api.md) &nbsp;·&nbsp;
 [Database](docs/database.md) &nbsp;·&nbsp;
-[Load test](docs/load-test.md)
+
 
 </div>
 
