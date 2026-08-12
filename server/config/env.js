@@ -30,7 +30,14 @@ const envSchema = z
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
 
     CORS_ORIGINS: originList,
-    APP_URL: z.string().url(),
+    // Only the origin is ever wanted, and links are built by appending a path
+    // to it. Someone configuring this will reasonably paste the address of a
+    // page rather than the site, so reduce whatever arrives to its origin: a
+    // stray path or trailing slash would otherwise produce dead invite links.
+    APP_URL: z
+      .string()
+      .url()
+      .transform((value) => new URL(value).origin),
 
     // Optional so the catalog works without an image provider. Uploads answer
     // 503 until all three are filled in.

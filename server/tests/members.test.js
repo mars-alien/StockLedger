@@ -39,7 +39,11 @@ describe('inviting members', () => {
 
     expect(response.status).toBe(201);
     expect(response.body.email).toBe('new@example.com');
-    expect(response.body.inviteUrl).toContain('/accept-invitation?token=');
+    // The path has to be exact. A configured APP_URL carrying a path of its own
+    // would otherwise nest the route and hand out a link that resolves nowhere.
+    const invite = new URL(response.body.inviteUrl);
+    expect(invite.pathname).toBe('/accept-invitation');
+    expect(invite.searchParams.get('token')).toEqual(expect.any(String));
 
     const pending = await api()
       .get('/api/members/invitations')
