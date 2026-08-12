@@ -90,7 +90,9 @@ export function OrderDetailPage() {
             >
               Download invoice
             </Button>
-            {canCancel && item.status === 'PLACED' && (
+            {/* Money has changed hands, so the server refuses a cancellation.
+                Offering the button anyway only leads to a 409. */}
+            {canCancel && item.status === 'PLACED' && item.paymentStatus !== 'PAID' && (
               <Button variant="danger" onClick={() => setCancelOpen(true)}>
                 Cancel order
               </Button>
@@ -215,8 +217,7 @@ export function OrderDetailPage() {
       <Modal open={cancelOpen} title="Cancel this order" onClose={() => setCancelOpen(false)}>
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Every line goes back to the ledger as a cancellation movement. This cannot be undone,
-            and a paid order cannot be cancelled at all.
+            Every line goes back to the ledger as a cancellation movement. This cannot be undone.
           </p>
 
           <Field label="Reason" htmlFor="cancel-note" hint="Optional, kept on the audit trail.">
