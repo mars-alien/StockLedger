@@ -30,13 +30,16 @@ built so that overselling is impossible.**
 
 **[stock-edger.vercel.app](https://stock-edger.vercel.app)** — all three accounts use `password123`
 
-| Sign in as  | Email                    | What you can do                                        |
-| ----------- | ------------------------ | ------------------------------------------------------ |
-| **Owner**   | `asha@stockledger.test`  | Everything, including members and the concurrency demo |
-| **Manager** | `imran@stockledger.test` | Catalogue, stock, orders, analytics                    |
-| **Staff**   | `rahul@stockledger.test` | Take orders. No pricing, no stock, no analytics        |
+| Sign in as  | Email                   | What you can do                                        |
+| ----------- | ----------------------- | ------------------------------------------------------ |
+| **Owner**   | `abhaysingh@gmail.com`  | Everything, including members and the concurrency demo |
+| **Manager** | `priyasharma@gmail.com` | Catalogue, stock, orders, analytics                    |
+| **Staff**   | `nehagupta@gmail.com`   | Take orders. No pricing, no stock, no analytics        |
 
-Nine months of seeded trading: 100 products, 226 variants, ~1,500 orders.
+Sharma General Store, with three months of seeded trading: 24 products across
+eight categories, 42 variants, and around 240 orders. A second organization,
+Nair Traders, exists so tenant isolation is something you can check rather than
+take on trust.
 
 > Hosted on a free tier, so the first request may take 30 seconds to wake the server.
 

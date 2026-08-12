@@ -17,38 +17,65 @@ import { lineTotal, orderTotals } from './utils/money.js';
 import { generateOrderNumber } from './utils/orderNumber.js';
 
 const SEED_PASSWORD = 'password123';
-const DEMO_SLUG = 'north-street-traders';
-const HISTORY_DAYS = 275;
+const DEMO_SLUG = 'sharma-general-store';
+
+// Sized from the environment so the same seeder fills a laptop or a free tier
+// database. The defaults are deliberately small: enough to look like a real
+// shop, little enough to sit inside Supabase's free row and storage limits.
+const PRODUCT_COUNT = Number(process.env.SEED_PRODUCTS ?? 24);
+const HISTORY_DAYS = Number(process.env.SEED_HISTORY_DAYS ?? 90);
+const RIVAL_PRODUCT_COUNT = Number(process.env.SEED_RIVAL_PRODUCTS ?? 6);
 
 const CATALOG = [
-  { category: 'Footwear', products: ['Runner', 'Trail Shoe', 'Loafer', 'Sandal', 'Hiking Boot'] },
-  { category: 'Apparel', products: ['T Shirt', 'Hoodie', 'Chinos', 'Denim Jacket', 'Polo'] },
-  { category: 'Electronics', products: ['Earbuds', 'Power Bank', 'Keyboard', 'Webcam', 'Mouse'] },
-  { category: 'Home', products: ['Table Lamp', 'Cushion', 'Storage Box', 'Wall Clock', 'Rug'] },
-  { category: 'Stationery', products: ['Notebook', 'Gel Pen', 'Sticky Notes', 'Folder', 'Marker'] },
-  {
-    category: 'Sports',
-    products: ['Yoga Mat', 'Water Bottle', 'Skipping Rope', 'Dumbbell', 'Grip'],
-  },
-  {
-    category: 'Beauty',
-    products: ['Face Wash', 'Lip Balm', 'Shampoo', 'Body Lotion', 'Sunscreen'],
-  },
   {
     category: 'Grocery',
-    products: ['Filter Coffee', 'Green Tea', 'Almonds', 'Honey', 'Olive Oil'],
+    units: ['500 g', '1 kg', '5 kg'],
+    products: ['Basmati Rice', 'Toor Dal', 'Chakki Atta', 'Mustard Oil', 'Jaggery'],
+  },
+  {
+    category: 'Beverages',
+    units: ['100 g', '250 g', '500 g'],
+    products: ['Masala Chai', 'Filter Coffee', 'Green Tea', 'Badam Mix'],
+  },
+  {
+    category: 'Snacks',
+    units: ['150 g', '400 g'],
+    products: ['Bikaneri Bhujia', 'Banana Chips', 'Murukku', 'Soan Papdi'],
+  },
+  {
+    category: 'Personal Care',
+    units: ['100 ml', '200 ml'],
+    products: ['Neem Soap', 'Coconut Hair Oil', 'Ayurvedic Toothpaste'],
+  },
+  {
+    category: 'Home',
+    units: ['Small', 'Large'],
+    products: ['Brass Diya', 'Steel Tiffin', 'Cotton Bedsheet'],
+  },
+  {
+    category: 'Apparel',
+    units: ['S', 'M', 'L', 'XL'],
+    products: ['Cotton Kurta', 'Nehru Jacket', 'Dupatta'],
+  },
+  {
+    category: 'Footwear',
+    units: ['UK 7', 'UK 8', 'UK 9'],
+    products: ['Kolhapuri Chappal', 'Juti', 'Canvas Shoe'],
+  },
+  {
+    category: 'Stationery',
+    units: ['Pack of 1', 'Pack of 5'],
+    products: ['Ruled Notebook', 'Gel Pen', 'Geometry Box'],
   },
 ];
 
-const SIZES = ['Small', 'Medium', 'Large'];
-const COLOURS = ['Black', 'Blue', 'Grey'];
 const CUSTOMERS = [
   'Ananya Krishnan',
   'Rohit Verma',
   'Fatima Sheikh',
   'Karthik Reddy',
   'Neha Bansal',
-  'Joseph Thomas',
+  'Sandeep Yadav',
   'Divya Nambiar',
   'Sameer Kulkarni',
   'Walk-in customer',
@@ -114,24 +141,31 @@ async function buildCatalog({ organizationId, actorUserId, productsWanted }) {
           organizationId,
           actorUserId,
           sku,
-          name: `${base} ${round > 1 ? `Mk ${round}` : ''}`.trim(),
+          name: round > 1 ? `${base} (Premium)` : base,
           description: `${base} from the ${group.category.toLowerCase()} range.`,
           categoryId: categories.get(group.category),
         });
 
-        const costCents = between(15000, 240000);
-        const priceCents = Math.round(costCents * (1.3 + random() * 0.7));
+        // Rupees a general store would actually charge: the base pack lands
+        // between roughly 30 and 350, and bigger packs scale up from there.
+        const costCents = between(2000, 24000);
+        const priceCents = Math.round(costCents * (1.25 + random() * 0.5));
 
-        for (let index = 0; index < between(1, 3); index += 1) {
+        // Variants are the pack sizes that category actually sells in, so a
+        // 5 kg bag of rice costs more than a 500 g one rather than the same.
+        const units = group.units.slice(0, between(1, Math.min(3, group.units.length)));
+
+        for (const [index, unit] of units.entries()) {
+          const multiplier = 1 + index * 0.8;
           const variant = await productService.addVariant({
             organizationId,
             actorUserId,
             productId: product.id,
             sku: `${sku}-${index + 1}`,
-            name: `${pick(SIZES)} / ${pick(COLOURS)}`,
-            attributes: { size: pick(SIZES), colour: pick(COLOURS) },
-            priceCents,
-            costCents,
+            name: unit,
+            attributes: { pack: unit },
+            priceCents: Math.round(priceCents * multiplier),
+            costCents: Math.round(costCents * multiplier),
           });
           variants.push({ id: variant.id, priceCents: variant.priceCents });
         }
@@ -154,7 +188,7 @@ function startOfHistory(days) {
 function ordersForDay(date, dayIndex, totalDays) {
   const weekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
   const growth = 1 + (dayIndex / totalDays) * 0.6;
-  const base = weekend ? between(4, 8) : between(1, 5);
+  const base = weekend ? between(2, 5) : between(1, 3);
   return Math.max(0, Math.round(base * growth));
 }
 
@@ -173,7 +207,7 @@ function buildHistory({ organizationId, variants, staffIds, days }) {
   const opening = new Date(start.getTime() - 24 * 60 * 60 * 1000);
 
   for (const variant of variants) {
-    const quantity = between(150, 400);
+    const quantity = between(40, 150);
     balances.set(variant.id, quantity);
     movements.push({
       organizationId,
@@ -338,39 +372,39 @@ async function seedDatabase() {
   }
 
   const demo = await createOwner({
-    name: 'Asha Rao',
-    email: 'asha@stockledger.test',
-    organizationName: 'North Street Traders',
+    name: 'Abhay Singh',
+    email: 'abhaysingh@gmail.com',
+    organizationName: 'Sharma General Store',
   });
 
   const demoStaff = [demo.user];
   for (const member of [
-    { name: 'Imran Qureshi', email: 'imran@stockledger.test', role: 'MANAGER' },
-    { name: 'Priya Menon', email: 'priya@stockledger.test', role: 'MANAGER' },
-    { name: 'Rahul Das', email: 'rahul@stockledger.test', role: 'STAFF' },
-    { name: 'Sneha Iyer', email: 'sneha@stockledger.test', role: 'STAFF' },
+    { name: 'Priya Sharma', email: 'priyasharma@gmail.com', role: 'MANAGER' },
+    { name: 'Rohit Verma', email: 'rohitverma@gmail.com', role: 'MANAGER' },
+    { name: 'Neha Gupta', email: 'nehagupta@gmail.com', role: 'STAFF' },
+    { name: 'Karan Mehta', email: 'karanmehta@gmail.com', role: 'STAFF' },
   ]) {
     demoStaff.push(await addMember({ ...member, organizationId: demo.organizationId }));
   }
 
   const rival = await createOwner({
     name: 'Vikram Nair',
-    email: 'vikram@stockledger.test',
-    organizationName: 'Harbour Supplies',
+    email: 'vikramnair@gmail.com',
+    organizationName: 'Nair Traders',
   });
   const rivalStaff = [rival.user];
   for (const member of [
-    { name: 'Meera Pillai', email: 'meera@stockledger.test', role: 'MANAGER' },
-    { name: 'Arjun Shetty', email: 'arjun@stockledger.test', role: 'STAFF' },
+    { name: 'Meera Pillai', email: 'meerapillai@gmail.com', role: 'MANAGER' },
+    { name: 'Arjun Shetty', email: 'arjunshetty@gmail.com', role: 'STAFF' },
   ]) {
     rivalStaff.push(await addMember({ ...member, organizationId: rival.organizationId }));
   }
 
-  logger.info('building the demo catalog');
+  logger.info({ products: PRODUCT_COUNT }, 'building the catalogue');
   const demoVariants = await buildCatalog({
     organizationId: demo.organizationId,
     actorUserId: demo.user.id,
-    productsWanted: 100,
+    productsWanted: PRODUCT_COUNT,
   });
 
   logger.info({ days: HISTORY_DAYS }, 'writing trading history');
@@ -387,23 +421,24 @@ async function seedDatabase() {
   const rivalVariants = await buildCatalog({
     organizationId: rival.organizationId,
     actorUserId: rival.user.id,
-    productsWanted: 10,
+    productsWanted: RIVAL_PRODUCT_COUNT,
   });
   const rivalHistory = await writeHistory({
     organizationId: rival.organizationId,
     variants: rivalVariants,
     staffIds: rivalStaff.map((user) => user.id),
-    days: 30,
+    days: Math.min(HISTORY_DAYS, 21),
   });
 
   logger.info(
     {
       organizations: 2,
       users: demoStaff.length + rivalStaff.length,
+      products: PRODUCT_COUNT + RIVAL_PRODUCT_COUNT,
       variants: demoVariants.length + rivalVariants.length,
       orders: demoHistory.orders + rivalHistory.orders,
       movements: demoHistory.movements + rivalHistory.movements,
-      signIn: `asha@stockledger.test / ${SEED_PASSWORD}`,
+      signIn: `abhaysingh@gmail.com / ${SEED_PASSWORD}`,
     },
     'seed complete',
   );
