@@ -62,7 +62,7 @@ export function DashboardPage() {
         action={
           <Select
             aria-label="Reporting range"
-            className="max-w-44"
+            className="w-full sm:max-w-44"
             value={days}
             onChange={(event) => setDays(Number(event.target.value))}
           >

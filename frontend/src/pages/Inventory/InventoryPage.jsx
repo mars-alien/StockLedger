@@ -60,7 +60,7 @@ export function InventoryPage() {
             <div className="flex flex-wrap gap-2">
               <Select
                 aria-label="Filter by variant"
-                className="max-w-56"
+                className="w-full sm:max-w-56"
                 value={variantId}
                 onChange={changeFilter(setVariantId)}
               >
@@ -73,7 +73,7 @@ export function InventoryPage() {
               </Select>
               <Select
                 aria-label="Filter by reason"
-                className="max-w-40"
+                className="w-full sm:max-w-40"
                 value={reason}
                 onChange={changeFilter(setReason)}
               >

@@ -54,13 +54,13 @@ export function OrdersPage() {
               <Input
                 aria-label="Search orders"
                 placeholder="Order number or customer"
-                className="max-w-52"
+                className="w-full sm:max-w-52"
                 value={search}
                 onChange={changeFilter(setSearch)}
               />
               <Select
                 aria-label="Filter by status"
-                className="max-w-36"
+                className="w-full sm:max-w-36"
                 value={status}
                 onChange={changeFilter(setStatus)}
               >
@@ -70,7 +70,7 @@ export function OrdersPage() {
               </Select>
               <Select
                 aria-label="Filter by payment"
-                className="max-w-36"
+                className="w-full sm:max-w-36"
                 value={paymentStatus}
                 onChange={changeFilter(setPaymentStatus)}
               >

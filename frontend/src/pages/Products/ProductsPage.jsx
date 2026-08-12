@@ -51,13 +51,13 @@ export function ProductsPage() {
               <Input
                 aria-label="Search products"
                 placeholder="Search name or SKU"
-                className="max-w-48"
+                className="w-full sm:max-w-48"
                 value={search}
                 onChange={changeFilter(setSearch)}
               />
               <Select
                 aria-label="Filter by category"
-                className="max-w-40"
+                className="w-full sm:max-w-40"
                 value={categoryId}
                 onChange={changeFilter(setCategoryId)}
               >
@@ -70,7 +70,7 @@ export function ProductsPage() {
               </Select>
               <Select
                 aria-label="Filter by status"
-                className="max-w-32"
+                className="w-full sm:max-w-32"
                 value={isActive}
                 onChange={changeFilter(setIsActive)}
               >

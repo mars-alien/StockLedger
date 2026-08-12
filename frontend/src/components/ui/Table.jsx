@@ -1,10 +1,12 @@
 import { Children, cloneElement, createContext, isValidElement, useContext } from 'react';
 import { cn } from '../../utils/cn';
 
-// Below the sm breakpoint a table stops being a table: every row becomes a card
+// Below the lg breakpoint a table stops being a table: every row becomes a card
 // and every cell becomes a labelled line inside it. Column headers disappear, so
 // each cell carries its own label. The labels come from TableHead, matched to
-// cells by position, which is why no page had to change.
+// cells by position, which is why no page had to change. The breakpoint is lg
+// rather than sm because six columns of dates and money still do not fit on a
+// tablet, and a table that scrolls sideways hides whichever column matters.
 const ColumnLabels = createContext([]);
 
 function labelFor(column) {
@@ -25,8 +27,8 @@ function columnsOf(children) {
 export function Table({ children }) {
   return (
     <ColumnLabels.Provider value={columnsOf(children)}>
-      <div className="sm:overflow-x-auto">
-        <table className="w-full text-left text-sm sm:whitespace-nowrap">{children}</table>
+      <div className="lg:overflow-x-auto">
+        <table className="w-full text-left text-sm lg:whitespace-nowrap">{children}</table>
       </div>
     </ColumnLabels.Provider>
   );
@@ -36,7 +38,7 @@ export function Table({ children }) {
 // digits line up in a column and are comparable down the page.
 export function TableHead({ columns }) {
   return (
-    <thead className="hidden border-b border-slate-200 text-xs tracking-wide text-slate-500 uppercase sm:table-header-group">
+    <thead className="hidden border-b border-slate-200 text-xs tracking-wide text-slate-500 uppercase lg:table-header-group">
       <tr>
         {columns.map((column, index) => {
           const { label, align } = typeof column === 'string' ? { label: column } : column;
@@ -57,14 +59,14 @@ export function TableHead({ columns }) {
 
 export function TableBody({ children }) {
   return (
-    <tbody className="block sm:table-row-group sm:divide-y sm:divide-slate-100">{children}</tbody>
+    <tbody className="block lg:table-row-group lg:divide-y lg:divide-slate-100">{children}</tbody>
   );
 }
 
 export function TableRow({ children }) {
   const labels = useContext(ColumnLabels);
   return (
-    <tr className="mb-3 block rounded-lg border border-slate-200 last:mb-0 sm:mb-0 sm:table-row sm:rounded-none sm:border-0 sm:hover:bg-slate-50">
+    <tr className="mb-3 block rounded-lg border border-slate-200 last:mb-0 lg:mb-0 lg:table-row lg:rounded-none lg:border-0 lg:hover:bg-slate-50">
       {Children.map(children, (child, index) =>
         isValidElement(child)
           ? cloneElement(child, { label: child.props.label ?? labels[index] })
@@ -78,21 +80,21 @@ export function TableCell({ children, align, className, label }) {
   return (
     <td
       className={cn(
-        // Stacked on a phone, an ordinary cell from sm upwards.
+        // Stacked on a narrow screen, an ordinary cell from lg upwards.
         'flex items-baseline justify-between gap-4 border-b border-slate-100 px-4 py-2 last:border-0',
-        'text-slate-700 sm:table-cell sm:border-0 sm:py-3 sm:align-middle',
+        'text-slate-700 lg:table-cell lg:border-0 lg:py-3 lg:align-middle',
         // Digits share a width, so figures stack cleanly rather than drifting.
-        align === 'right' && 'tabular-nums sm:text-right',
+        align === 'right' && 'tabular-nums lg:text-right',
         className,
       )}
     >
       {label ? (
-        <span className="shrink-0 text-xs font-medium tracking-wide text-slate-500 uppercase sm:hidden">
+        <span className="shrink-0 text-xs font-medium tracking-wide text-slate-500 uppercase lg:hidden">
           {label}
         </span>
       ) : null}
       {/* The wrapper aligns the value on a phone and dissolves on wider screens. */}
-      <div className="min-w-0 text-right sm:contents sm:text-left">{children}</div>
+      <div className="min-w-0 text-right lg:contents lg:text-left">{children}</div>
     </td>
   );
 }

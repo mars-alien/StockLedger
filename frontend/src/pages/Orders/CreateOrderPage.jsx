@@ -132,7 +132,7 @@ export function CreateOrderPage() {
               <Input
                 aria-label="Search variants"
                 placeholder="Search product, variant or SKU"
-                className="max-w-64"
+                className="w-full sm:max-w-64"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />

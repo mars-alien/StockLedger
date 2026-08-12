@@ -60,7 +60,7 @@ export function MembersPage() {
             <Input
               aria-label="Search members"
               placeholder="Search name or email"
-              className="max-w-56"
+              className="w-full sm:max-w-56"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);

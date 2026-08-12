@@ -56,7 +56,7 @@ export function CategoriesPage() {
             <Input
               aria-label="Search categories"
               placeholder="Search by name"
-              className="max-w-56"
+              className="w-full sm:max-w-56"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);

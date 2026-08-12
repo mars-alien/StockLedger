@@ -40,10 +40,12 @@ const envSchema = z
       .transform((value) => new URL(value).origin),
 
     // Optional so the catalog works without an image provider. Uploads answer
-    // 503 until all three are filled in.
-    CLOUDINARY_CLOUD_NAME: z.string().default(''),
-    CLOUDINARY_API_KEY: z.string().default(''),
-    CLOUDINARY_API_SECRET: z.string().default(''),
+    // 503 until all three are filled in. Trimmed because a value that is blank
+    // apart from whitespace reads as configured and then fails every upload,
+    // which reports a storage fault rather than the missing setting it is.
+    CLOUDINARY_CLOUD_NAME: z.string().trim().default(''),
+    CLOUDINARY_API_KEY: z.string().trim().default(''),
+    CLOUDINARY_API_SECRET: z.string().trim().default(''),
 
     // Optional for the same reason: without keys the payment endpoints answer
     // 503 and everything else, including invoices, still works.

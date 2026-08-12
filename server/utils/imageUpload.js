@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { env } from '../config/env.js';
 import { AppError } from './AppError.js';
+import { logger } from './logger.js';
 
 const configured = Boolean(
   env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET,
@@ -26,6 +27,12 @@ export function uploadProductImage(buffer, organizationId) {
       { folder: `stockledger/${organizationId}`, resource_type: 'image' },
       (error, result) => {
         if (error) {
+          // The caller is told nothing useful on purpose, but silence in the log
+          // leaves rejected credentials and a network fault looking identical.
+          logger.error(
+            { err: error, httpCode: error.http_code, organizationId },
+            'cloudinary rejected an image upload',
+          );
           reject(new AppError('IMAGE_UPLOAD_FAILED', 502, 'The image could not be stored'));
           return;
         }
